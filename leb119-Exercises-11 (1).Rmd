@@ -1,0 +1,146 @@
+---
+title: "Exercise 11-1"
+author: "Luis E Borrero"
+date: "8/9/2019"
+output: html_document
+---
+
+Exercise 11.
+
+Step 0: we check the assumptions. The data must be random, independent, be less than 10% of the population, and have enough observed and expected values.
+
+Step 1: We set the null and alternative hypothesis: In this case is the following:
+Ho: The two categorical variables, i.e. men and women, independnetly buy the type of pacakage (cup, cone, sundae, sandwich or other) they want their ice cream in.
+Ha: Men and women are not independent when buying the type of pacakage (cup, cone, sundae, sandwich or other) they want their ice cream in.
+
+Step 2: our alfa is going to be 0.05. 
+
+Step 3: We calculate our test statistic.
+
+We first come up with a contingency table. The one I used is from the following URL: http://mathworld.wolfram.com/ContingencyTable.html. We have men and women in the rows, the type of 'pacakage' they buy their ice cream in (cup, cone, sundae, sandwich or other) in the columns. The numbers inside show hoe many men (or women) bough and ice cream cone, for example. We use c() to combine these counts, rbind() to combine our men and women vectors by rows, and colnames() to define the column names. 
+```{r}
+men <- c(592,	300,	204,	24,	80)
+women <- c(410,	335,	180,	20,	55) 
+ct <- rbind(men, women)
+colnames(ct) <- c("cup",	"cone",	"sundae",	"sandwich",	"other")
+ct
+```
+
+The next step is to get the row and column totals to get the total of each row and the total of each column. We once again create a vectir for col.totals and row-totals and then ad up the values. We use rbind() and cbind() to combine the resulting vectors into rows and columns respectively. 
+```{r}
+men <- c(592,	300,	204,	24,	80)
+women <- c(410,	335,	180,	20,	55) 
+col.totals <- men+women
+row.totals <- c(sum(men), sum(women), sum(men)+sum(women))
+ct <- rbind(men, women, col.totals)
+ct <- cbind(ct, row.totals)
+ct
+```
+
+After that, we create another table with rbind(), using the expected value of row 1 and row 2, using the following formula for each cell: row total * column total / total. 
+```{r}
+expected.values.row.1 <- c((1200*1002/2200), (1200*635/2200), (1200*384/2200), (1200*44/2200), (1200*135/2200))
+expected.values.row.2 <- c((1000*1002/2200), (1000*635/2200), (1000*384/2200), (1000*44/2200), (1000*135/2200))
+expected.values <- rbind(expected.values.row.1, expected.values.row.2)
+expected.values
+```
+
+Then, we calculate chi square by adding up the difference between observed and expected values squared divided by the expected value. This is done for each cell and then we add up the values. The resulting value is our test statistic: 23.49262.
+```{r}
+chisq.1 <- ((men[1]-expected.values.row.1[1])^2/expected.values.row.1[1])
+chisq.2 <- ((men[2]-expected.values.row.1[2])^2/expected.values.row.1[2])
+chisq.3 <- ((men[3]-expected.values.row.1[3])^2/expected.values.row.1[3])
+chisq.4 <- ((men[4]-expected.values.row.1[4])^2/expected.values.row.1[4])
+chisq.5 <- ((men[5]-expected.values.row.1[5])^2/expected.values.row.1[5])
+chisq.6 <- ((women[1]-expected.values.row.2[1])^2/expected.values.row.2[1])
+chisq.7 <- ((women[2]-expected.values.row.2[2])^2/expected.values.row.2[2])
+chisq.8 <- ((women[3]-expected.values.row.2[3])^2/expected.values.row.2[3])
+chisq.9 <- ((women[4]-expected.values.row.2[4])^2/expected.values.row.2[4])
+chisq.10 <- ((women[5]-expected.values.row.2[5])^2/expected.values.row.2[5])
+ts.chisq <- chisq.1 + chisq.2 + chisq.3 + chisq.4 + chisq.5 + chisq.6 + chisq.7 + chisq.8 + chisq.9 + chisq.10
+ts.chisq
+```
+
+We then find the degrees of freedom by multiplying the total number of rows minus one times the total number of cilumns minues one.
+```{r}
+df <- (2-1)*(5-1)
+df
+```
+
+Step 4: we draw a picture using ggplot. The picture is a right-skewed distribution and the p-value is always in the right tail.
+```{r}
+library(ggplot2)
+ggplot(data.frame(x=c(0,20)), aes(x=x)) +stat_function(fun=dchisq, args=list(df=5)) + stat_function(fun=dchisq, args=list(df=5), xlim=c(12,20), geom="area")
+```
+
+Step 5: We then find the p-value using the pchisq() function, were we first include the test statistic and the the degress of freedom. Since we are looking at the shaded area to the right, we need to substract this result from 1. 
+```{r}
+1-pchisq(23.49262, df=4)
+```
+
+Step 6: Since p-value = 0.0001009315 is less than alfa = 0.05, we reject the null hypothesis. 
+
+Step 7: While there is no is no specific confidence interval for this test, we can still check our analytical work with R. We first create a new contingency table, as the one we had before. We dimnames() to retrieve or set the dimnames of an object and list() to specify the objects we will be looking at. 
+```{r}
+row1 <- c(592,	300,	204,	24,	80)
+row2 <- c(410,	335,	180,	20,	55)
+my.ctable <- rbind (row1, row2)
+dimnames(my.ctable) <- list(gender = c("Men","Women"),package = c("cup",	"cone",	"sundae",	"sandwich",	"other"))
+my.ctable
+```
+
+We then employ the chisq.test() to calculate chi-square, the degrees of freedom and the p-value, which are very similar to what we computed analytically. 
+```{r}
+chisq.test(my.ctable)
+```
+
+Since we rejected the null hypothesis, we know that men and women are not independent when choosing which package they prefer their ice cream in, i.e. there is a relatinship between them. To find out how strong this relationship is we will first store the results to a new variable called Xsq.results. We use the str() command to find out what is in our data. 
+```{r}
+Xsq.results <- chisq.test(my.ctable)
+str(Xsq.results)
+```
+
+Now we can more easily access the expected values from our contingency table, without having to compute them analytically again. 
+```{r}
+Xsq.results$expected
+```
+
+We can also access the observed values easily this way. 
+```{r}
+((Xsq.results$observed - Xsq.results$expected)^2)/Xsq.results$expected
+```
+
+With this, we can easily compute and check our previously calculate chi-square, which once again is veru similar to what we had before. 
+```{r}
+sum(((Xsq.results$observed -Xsq.results$expected)^2)/Xsq.results$expected)
+```
+
+To measure how strongly associated the variables are, we can calculate the contingency coefficient with the foloowing formula: square root of chi-square divided by n + chi-square. The scale of this calcultaion ranges from 0 (indicating no association) to 1 (indicating the maximum association). The result (0.1027893) demontsrates that there is some association between men and women when picking a ice cream package, but not much.
+```{r}
+contin.coeff <- function(xsq) {sqrt(xsq$statistic/(sum(xsq$observed)+xsq$statistic))}
+contin.coeff(Xsq.results)
+```
+
+We can also calcutale Cramer's V to compare the strength of association between two completely different contingency tables. Like the contingency coefficient the scale is between 0 to 1, but it takes into account the dimensions of the contingency table, i.e. the number of rows and columns. The formula is the following: v= square root of chi-square divided by n times t=min(r-1, c-1). Our resulting value, once again shows that a relationship between our categorical variables exists, but is weak. 
+```{r}
+cramers.v <- function(xsq) {
+a <- dim(xsq$observed)[1] # number of rows
+b <- dim(xsq $observed)[2] # number of columns
+t <- min(a,b)-1
+sqrt(xsq$statistic/(sum(xsq$observed)*t))
+}
+cramers.v(Xsq.results)
+```
+
+Furthermore, we can also conduct acChi-square test with only categorical variable, to see if a set of observations comes from a particular distribution. For example, with a fair die we are certain that each outcome, from 1 through 6, will come up about 12.5% (1/6) of the time. However, with an unfair die, we can expect to see a distribution that does not fit this assumptions. We then can apply the chi-Square goodness of fit test to see if our dice roll data comes from a uniform distribution or not. The first example shows a fair die, hence the p-value is greater than alfa, meaning that we fail to reject the null and assume that it comes from the expected distribution. 
+```{r}
+fair.rolls <- c(12,8,11,9,10,10)
+chisq.test(fair.rolls, p=c(1/6,1/6,1/6,1/6,1/6,1/6))
+```
+
+However, this second example shows an unfair die, as with a very small p-value we reject the null that our data came from the specified distribution. 
+```{r}
+unfair.rolls <- c(17,3,13,7,5,15)
+chisq.test(unfair.rolls, p=c(1/6,1/6,1/6,1/6,1/6,1/6))
+```
+
