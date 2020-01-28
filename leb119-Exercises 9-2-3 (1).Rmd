@@ -1,0 +1,125 @@
+---
+title: "leb119-Exercises 9-2-3"
+author: "Luis E Borrero"
+date: "8/5/2019"
+output: html_document
+---
+
+Exercise 9-2. 
+
+First, we input the data collected of 17 randomly sampled cars during rush hour on 3 different days during the week using c(). We also use summery() and sd() to get some descriptive statistic. 
+```{r}
+speeds <- c(29,25,22,34,38,40,27,29,30,30,23,34,42,36,35,27,37)
+length(speeds)
+summary(speeds)
+sd(speeds)
+```
+
+In this case, the null hypthesis is that the mean speed is 5 mph above the speed limit (mu = 30 mph), while the alternative hypotheisis is that the cars are, on average, going faster than that (mu > 30 mpg). Since we are testing against the alternative, we can use the t.test() function to test our hypothesis, specifying that mu is 30 and that the alternative predicts that cars are going faster:
+```{r}
+t.test(speeds,mu=30,alternative="greater")
+```
+
+We can now use R to calculate the P-value that corresponds to t=1.147. We must keep in mind that R only looks up areas to the left of a test statistic. However, since selected the alternative hypothesis with the greater than option, it means that we need the area to the right of the test statistic. Hence, we begin with 1 minus the area to the left of t=1.147. For this we use the pt() function where we first input the t-statistic and then the degrees of freedom (n-1), i.e. df=16. 
+```{r}
+1-pt(1.147,df=16)
+```
+
+The problem here is that before R had calculated that the 95% confidence interval was between 29.13775 and infinity. Hence, we should calculate the critical value ourselves. We first find the critical value of t, t*, for df = 17 - 1 = 16, using the qt() command. Here we specify the 95% confidence interval; since it looks at it from both sides it ends up being 97.5% (0.975) on the right side; df remains 16. 
+```{r}
+qt(0.975,df=16)
+```
+
+This gives us 2.12 which we then input into the expression of the confidence interval, which gives us the following interval (28.6, 34.7). To compute correctly in R, thus, we need to drop the alternative hypothesis from t.test. To compute a confidence interval without going ahead with the full inference test, we just need to use the estimates from our sample in place of the values you were supposed to take from the right-hand side of your null hypothesis. Therefore, we solve this problem by eliminating the alternative argument from our t.test
+```{r}
+t.test(speeds,mu=30)
+```
+
+The results now support the computation of the confidence interval we got by doing the problem analytically. 
+
+
+
+Exercise 9-3. 
+
+Two perform out two sample t-test example we first need to download the beer foam data from GitHub, using read_csv and tidyverse. 
+```{r}
+library(tidyverse)
+foam <- read_csv("https://raw.githubusercontent.com/NicoleRadziwill/Data-for-R-Examples/master/beer-foam.csv")
+names(foam)
+```
+
+With names() we can see that we have 10 independent variables, including: pour number, time, test case number, brewery, temperature of beer, height of beer from bottom of glass (beer.ht), wet and dry foam heights (in cm), and tau, the half-life of the beer foam. The resulting tibble preview from the data is the following:
+```{r}
+foam
+```
+
+We want to compare whether there is a difference between the half-life of the foam at any given time for the SH product poured cold versus poured at room temperature. We also want to compare whether there is a difference between the half-lives of the foam at any given time for the 3B product poured cold versus poured at room temperature. Thus, we will be executing two different two sample t-tests. We must first check if our data meets all the assumptions: random sample, independent observations, sample is small enough, and values are nearly normal or the sample size is large. To check this we can look at the graphs of the four variables we will be dealing with:
+```{r}
+foam %>% ggplot(aes(x=tau)) + geom_histogram(aes(y=..count..), binwidth=25,color="black",fill="gray") + facet_grid(.~test.case, scales="free") + scale_x_continuous(limits=c(100,400))
+```
+
+The histograms show that we have a large sample, and that all but one of the four distributions from the four
+breweries appear nearly normal. 
+
+The last assumption we must check is whether each of the two samples has distributions of similar variability, i.e. equal variances. We can quickly run a test of variances for the SH product data, then for 3B, using the var.test() command:
+
+First for SH: 
+```{r}
+var.test(foam[foam$test.case=="SH-COLD",]$tau,foam[foam$test.case=="SH-RT",]$tau)
+```
+
+Second, for 3B:
+```{r}
+var.test(foam[foam$test.case=="3B-COLD",]$tau,foam[foam$test.case=="3B-RT",]$tau)
+```
+
+We need to focus on the p-values for these 2 tests. If the p-value is less than alfa (nominally 0.05), we reject the null hypothesis that the variances are equal. To meet the assumptions of equal variances we want to see large p-values (at least larger than alfa). The p-value for SH is 0.003049, meaning that the tau distributions for the SH product are not okay. Conversely, the p-value for the 3B product is 0.5862, meaning we can move forward with the two-sample t-test with equal variances only for this product.
+
+Our null and alternative hypotheses are as follows: 
+H0: muCOLD - muRT = 0 (there is no difference between mean tau)
+Ha: muCOLD - muRT > 0 (cold beer has higher tau than room temperature)
+
+The level of significance will be set at alfa = 0.01. 
+
+It's useful to know all the means and standard deviations of tau. Thus, we first group_by() the variable that contains our brewery codes, i.e. test.case; then, we find the standard deviation and mean for each group with summarize(), and lastly we use mutate_if() to make sure all the numeric variables are not truncated.
+```{r}
+foam %>% group_by(test.case) %>% summarize(sd=sd(tau), mean=mean(tau)) %>% mutate_if(is.numeric, format)
+```
+
+We then plug the appropriate values into the sp equation: 
+## sp = sqr of (39)*(55.53)^2 + (39)*(50.87)^2 divided by 40 + 40 - 2 
+## sp = 53.25
+
+We then plug that value into our equation for the t-statistics:
+## t= 221.19 - 226.86 divided by 53.25*sqr of 1/40 + 1/40
+## t= -0.476
+
+T-distributions have the normal bell-curve shape, and the sample sizes are large, so we can draw the picture using a normal approximation with ggplot. The alternative hypothesis is "greater than," meaning that we want to shade the area that's to the RIGHT of our computed test statistic t of -0.476. We can see  that more than 50% of the area under the curve is shaded. 
+```{r}
+ggplot(data.frame(x=c(-4,4)), aes(x=x)) + stat_function(fun=dnorm) + stat_function(fun=dnorm, xlim=c(-0.476,4), geom="area")
+```
+
+Given that our p-value is very large, it means that it is not less than alfa  and thus we fail to reject the null hypothesis. There is no evidence indicating that the mean tau for the cold pours is greater than the mean tau for the room temperature pours.
+
+Doing the exercise manually, we get a confidence interval of (-29.76, 18.42), which means that we are 95% confident that the true difference between tau from a cold pour of the 3B brand beer and tau from a room temperature pour of the same beer lies between these values. Given the range include zero, we can affirm our decision to fail to reject the null hypothesis. 
+
+To execute the two-sample t-test in R we will first create the data frames cold and rt to store the tau values from the cold pour of the 3B product, and the tau values from the room temperature pour of the 3B product. Then, we simply run the test using the t.test (). 
+```{r}
+foam %>% filter(test.case=="3B-COLD") %>% select(tau) -> cold
+foam %>% filter(test.case=="3B-RT") %>% select(tau) -> rt
+t.test(cold$tau ,rt$tau, alternative="greater", var.equal=TRUE)
+```
+
+The test statistic is the same as what we calculated analytically. The p-value is well over 50% at 0.6824. We can then easily test to see if the room temperature values are higher than the cold pour values by reversing the alternative hypthesis. We once again use the t.test() command. 
+```{r}
+t.test(cold$tau, rt$tau, alternative="less", var.equal=TRUE)
+```
+
+Again, when we ask whether the p-value is less that alfa, the answer is no; thus we fail to reject the null hypothesis. There does not seem to be a difference between the tau values from the cold pours, and the tau values from the room temperature pours. We can further obtain the confidence interval by leaving out the alternative argument in t.test(). 
+```{r}
+t.test(cold$tau, rt$tau, var.equal=TRUE)
+```
+
+The resulting interval, (-29.37598, 18.03498), is very close to what we calculated. 
+
+
