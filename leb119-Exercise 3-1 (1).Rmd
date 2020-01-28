@@ -1,0 +1,63 @@
+---
+title: "leb119-Exercise 3-1"
+author: "Luis Borrero"
+date: "7/22/2019"
+output: html_document
+---
+
+```{r}
+#Load data from the National Oceanic and Atmospheric Association; make sure to bring up the data from tidyverse using library()
+library(tidyverse)
+
+#Read_csv command makes a tibble which is a tidyverse-friendly data frame; this format facilitates data identification, suppressing wrap and scrolling problems. They also tell you what types of data are available
+tvs<-read_csv("https://raw.githubusercontent.com/NicoleRadziwill/Data-for-R-Examples/master/tvs-201407.csv")
+
+#Inputing tvs we are able to take a clearer look at what is in the file, which includes: WSR_ID (name of the radar station that reported the observation), CELL_ID (distinguish between tornadoes reltaed to different thunderstorms), DEPTH (of the tornado), TOP (of the tornado), among other things. 
+tvs
+
+#Now, we create a new tibble called sub.tvs by starting with tvs and pushing it through the select function so that only DEPTH, TOP, and MAX_SHEAR are kept.
+sub.tvs<-tvs %>% select(DEPTH,TOP,MAX_SHEAR)
+summary(sub.tvs)
+
+#Calculate the standard deviation and variance using the base R package. 
+sd(sub.tvs$DEPTH)
+var(sub.tvs$DEPTH)
+
+#Find the standard deviation and variance in Tidyverse using dplyr. 
+sub.tvs %>%
+  summarise(sd=sd(DEPTH))
+sub.tvs %>%
+  summarise (var=var(DEPTH))
+
+#This base R conde is employed to load the mode function
+mode<-function(x) {
+  uniq.vals <- unique(x)
+  uniq.vals[which.max(tabulate(match(x,uniq.vals)))]
+}
+
+#This function/command finds the mode of your data. 
+mode(sub.tvs$TOP)
+
+#Alternatively, you can also source the data from GitHub directly. 
+mode(c(2,3,4,4,4,4,5,6)) 
+mode(sub.tvs$TOP)
+
+#Install the pastecs package and bring it up with library().
+library(pastecs)
+
+#The first two commands (options), allow you to set the number of significant digits you want to see because stat.desc uses scientific notation. 
+options(scipen=100)
+options(digits=3)
+
+#Stat.desc shows you basic descriptive statistics in the summary and also: number of observations (nbr.val), number of null observations (nbr.null), the number of NA observations (nbr.na), the range of values (range), the sum of all values (sum), the standard error of the mean (SE.mean), the width of the 95% confidence interval (CI.mean.0.95), the variance of all the values (var), the standard deviation (std.dev) and the coefficient of variance (coef.variance).
+stat.desc(sub.tvs)
+
+#Summary of Arguments one can use to generate descriptive statistics
+# stat.desc(basic=TRUE) - Include number of observations, number of nulls, number of NAs, min, max, range and sum
+# stat.desc(desc=TRUE) - Include median, mean, standard error of the mean, width of the confidence interval, variance, standard deviation, and coefficient of variation
+# stat.desc(norm=TRUE) - Include measures for skewness and kurtosis
+# stat.desc(p=0.99) - Specify the width of the desired confidence interval (e.g. 99%)
+# stat.desc(digits=3) - Specify the number of significant digits to display (e.g. 3)
+# stat.desc(options=999) - Specify a "penalty" to use when determining whether scientific notation (e.g. 1E+03 or 1000); higher values incur greater penalty, and a 999 will prevent use of scientific notation almost entirely
+```
+
