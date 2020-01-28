@@ -1,0 +1,181 @@
+---
+title: "leb119-Exercises 5"
+author: "Luis Borrero"
+date: "7/26/2019"
+output: html_document
+---
+
+5-1. First, we generate a vector for our counts creating a varibale mm.counts and inputing the number of times each color of M&M appeared. We specify which number corresponds to each color in the second line, i.e. there were 8 blue M&Ms, 5 brown ones, etc. The third line generates another vector for M&M color. 
+```{r}
+mm.counts<-c(8,5,10,15,9,10)
+names(mm.counts)<-c("blue", "brown", "green", "orange", "red", "yellow")
+mm.colors<-c("blue", "brown", "green", "orange", "red", "yellow")
+```
+
+The first line creates a black and white barplot, while the second line it is specified the colors we want each column to have, i.e. the color of their corresponding M&M. 
+```{r}
+barplot(mm.counts)
+barplot(mm.counts,col=mm.colors)
+```
+
+Finally, we use the main, xlab and ylab arguments to specify the title of the graph, the label of the x-axis and the label of the y-axis respectively.
+```{r}
+barplot(mm.counts,col=mm.colors, main = "M&M Color Distribution", xlab="M&M Color", ylab="M&M Count")
+```
+
+
+
+5-2. We generate a random data sample of 5000 values from a beta distribution with the following parameters alfa=5 and beta=2.
+```{r}
+x <- rbeta(5000,5,2)
+```
+
+We examine the data looking at its descriptive statistics with the summary() command and then take the standard deviation with sd() and the variance with var().
+```{r}
+summary(x)
+sd(x)
+var(x)
+0.9963-0.1252
+```
+We can see from this results that this distribution slightly skewed to the left with a median of 0.73 and a mean of 0.71. The spread can be described with a standard deviation of 0.16 and a range of 0.8711. 
+
+We generate our histogram using the ggplot() function which initializes the the construction of an initial plot object, which is then created with geom_histogram() with the following specifications: title "Histogram of x," x-axis label = x, y-axis label = count, and the fill of the columns being gray. 
+```{r}
+library(tidyverse)
+ggplot() + geom_histogram(aes(x=x), binwidth=0.1, color="black", fill="gray") + ggtitle("Histogram of x")
+```
+
+Now we generate two more histograms: the left one using frequency and the right one using density; the latter one has a density curve for better visualization. Par() sets the area of the plot to one row and two columns, while the third line plots the frequency histogram on the left and the fourth line plots the density histogram on the right. For this we use the freq=FALSE arguemnt. The fifth line just further specifiec the generation of the density dotted curve of the second graph. 
+```{r}
+par(mfrow=c(1,2))
+hist(x, col="gray", xlab="Randomly Sampled Values", ylab="Frequency of Occurrence", main="Frequency")
+hist(x, col="gray", freq=FALSE, xlab="Randomly Sampled Values", ylab="Density", main="Density")
+lines(density(x),lty="dotted", lwd=3)
+```
+
+
+
+5-3. First we load our mnm data (I am using the one my classmates and I collected friday in class).
+```{r}
+mnms <- as.tibble(read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRKlQHN_VFjFAhp6VzVxzf_svVYD3q8WVTSgVN9oHZ0FpD2hdFWG_ENlr978fC1tPqz_d3cjWZ86G2y/pub?output=csv",header=TRUE))
+```
+
+We then generate a table using the table(rows, columns) command. The table has the following specifications: the rows will be the Colour data from mnms and the columns will be the Defects data from mnms. This sign $ means that I am accesing a variable withing the data frame. For instance, mnms$Colour means that I want the Colour data from the mnms dataframe.
+```{r}
+table(mnms$Colour,mnms$Defects)
+```
+
+For the tidyverse contingency table we first group_by the two categorical variables of interest, then add up all the m&m's using tally() and then spread() them into a contingency table were the variable we want to spread is the one we want in the columns.
+```{r}
+mnms %>% group_by(Colour,Defects) %>% tally() %>% spread(Defects, n, fill=0)
+```
+
+Another way to create a contingency table using tabyl(). We first install the janitor package. 
+```{r}
+library(janitor)
+mnms %>% tabyl(Colour, Defects)
+```
+
+We then generate a segmented bar chart using ggplot(). We easily access the tallied output from the table using ggplot with %>%. 
+```{r}
+mnms %>% group_by(Colour,Defects) %>% tally() %>% ggplot() + geom_bar(aes(x=Colour, y=n, fill=Defects), stat="identity")
+```
+
+Rather than counts, this bar chart presents proportions. We just need to specify position and use the percent_format function from the scales package. 
+```{r}
+mnms %>% group_by(Colour,Defects) %>% tally() %>% ggplot() + geom_bar(aes(x=Colour, y=n, fill=Defects), position="fill", stat="identity") + scale_y_continuous(labels=scales::percent_format())
+```
+
+
+
+5-4. We first simulate weather data of daily high temperatures from a location on 40 random summer days; the mean in 76 and the standard deviation is 9. Summary() provides us with descriptive statistics and fivenum() gives us the five number summary and tells us from left to right the minimum, the first quartile, the median, the third quartile, and the maximum. Attach() tells us we are using the temp.df dataset and detach() tells us that we are done using this dataset. 
+```{r}
+temps.df <- data.frame(temps = rnorm(40, mean=76, sd=9))
+attach(temps.df)  
+head(temps)
+summary(temps)
+fivenum(temps)
+detach(temps.df) 
+```
+
+For the top plot we call ggplot and specify that we want to use the temps.df dataset. There is only one variable in temps and thus we give this as our y data. Geom_boxplot() specifies the plot type (boxplot) and the coord_flip() command tips the box so that it is presented horizontally instead of vertically. We follow a similar process for the bottom plot and present tem together in a single column, one on top of the other, using the ncol=1 argument by the plot_grid function of the cowplot package. 
+```{r}
+top <- ggplot(data=temps.df, aes(y=temps)) + geom_boxplot() + theme_bw() + coord_flip() + ggtitle("Box Plot of Summer High Temps") + xlab("Temperature (deg F)") + ylab("")
+bottom <- ggplot(data=temps.df, aes(x=temps)) + geom_histogram(color="black", fill="gray", binwidth=3) + theme_bw() + ggtitle("Histogram of Summer High Temps")
+cowplot::plot_grid(top, bottom, ncol=1)
+```
+
+We generate more data for a new boxplot using the plyr package. The newly created dfx dataframe has three variables group, sex and age. Group replicates A eight times, B fifteen times and C six times; for sex we create a random sample of 29 variables that can either be M (male) or F(female); for age we randomly select 29 values from a uniform distribution with a minimum of 18 and a maximum of 54. 
+```{r}
+dfx <- data.frame(group = c(rep('A', 8), rep('B', 15), rep('C', 6)), gender = sample(c("M", "F", "O"), size = 29, replace = TRUE), age = runif(n = 29, min = 18, max = 54))
+```
+
+The resulting data looks like this:
+```{r}
+head(dfx)
+```
+
+To generate a boxplot with labels we first create our box plot labels out of the data from the five number
+summary.
+```{r}
+my.labels <- round(fivenum(dfx$age),digits=2)
+```
+
+We then generate a boxplot out of the age variable of the dfx dataframe. 
+```{r}
+boxplot(dfx$age, horizontal=TRUE, ylim=c(10,60), col="lightgray", add=FALSE, main="Distribution of Ages")
+```
+
+To add the labels, we use the text() fucntion. 
+```{r}
+boxplot(dfx$age, horizontal=TRUE, ylim=c(10,60), col="lightgray", add=FALSE, main="Distribution of Ages")
+text(x=my.labels, y=c(1.15, 1.25, 1.25, 1.25, 1.15),labels = my.labels)
+```
+
+For comparative plots, we first load the all.scores data. The data presents test scores of tests taken at the beginning and end of the semester. 
+```{r}
+allscores <- readr::read_csv("https://goo.gl/MJyzNs")
+allscores
+```
+
+To use ggplot, the first column presents the test type and the second one the test score. We can collect
+both columns and recode them, specifying the key and choosing a new column name using the value argument to hold the scores; gather() gathers the columns you want to present together under the new score column. 
+```{r}
+allscores %>% gather(key="test.type", value="score", pre, post)
+```
+
+To prepare the boxplots, we use the pre and post data that we want to be presented on the left and right respectively. 
+```{r}
+left <- allscores %>% gather(key="test.type", value="score", pre, post) %>% ggplot() + geom_boxplot(aes(x="All Scores", y=score))
+right <- allscores %>% gather(key="test.type", value="score", pre, post) %>% ggplot() + geom_boxplot(aes(x=test.type, y=score))
+```
+
+We employ plot_grid from cowplot to plot them side by side. 
+```{r}
+cowplot::plot_grid(left, right)
+```
+
+While these plots are good enough, they are not professional. We must first get rid of the label on the x-axis (“test.type”), scale the y-axis from 0 to 100 (the range of all scores), and order the tests chronologically, i.e. pre-tests first and post-tests second.
+```{r}
+right <- allscores %>% gather(key="test.type", value="score", pre, post) %>% mutate(test.type=factor(test.type, levels=c("pre","post"), ordered=TRUE)) %>% ggplot() + geom_boxplot(aes(x=test.type, y=score))
+```
+
+We then plot the new comparative boxplots with new the new specifications and a title. 
+```{r}
+right + ggtitle("Statistics Pre- and Post-Test Score Distributions") + scale_y_continuous(limits=c(0,100)) + xlab("Groups") + scale_fill_manual(values=c("gray","white") + theme_dark())
+```
+
+In this comparative boxplots we separate the information in three groups (1,2 and 3) on the horizontal axis and the score differences distributions on the vertical axis.
+```{r}
+p1 <- allscores %>% ggplot() + geom_boxplot(aes(y=diff))
+p2 <- allscores %>% ggplot() + geom_boxplot(aes(y=diff, group=group))
+p3 <- allscores %>% ggplot() + geom_boxplot(aes(y=diff, group=group,
+fill=group))
+cowplot::plot_grid(p1, p2, p3, nrow=1)
+```
+
+The guides() command gets rid of the fade bar on the right. 
+```{r}
+p3 + guides(fill=FALSE)
+```
+
