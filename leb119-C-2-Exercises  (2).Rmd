@@ -1,0 +1,166 @@
+---
+title: "C-2 Exercise"
+author: "Luis E Borrero"
+date: "9/3/2019"
+output: html_document
+---
+
+## C-2 Exercise 1
+
+We start by installing the janitor and readr packaages The first helps clean up the data and make it easy to read, while the second allows R to read the data in whatever format it is. Our data here is in .txt format and to read it we willl use the read_delim() function, creating the vector wx. The data frame is the daily weather data reported throughout 2013 from the Shenandoah Valley Airport (SHD). 
+```{r}
+library(janitor)
+library(readr)
+wx <- read_delim("https://raw.githubusercontent.com/NicoleRadziwill/Data-for-R-Examples/master/kshd-2013.txt", delim="\t") %>% janitor::clean_names()
+wx
+```
+
+Since we are now dealing with multiple linear regression, we must first create a linear model to predict depwoint (wx$dewp), i.e. our dependent variable, from all the other variable we have except date, i.e. our indepent variable. We use ~ both types of variables and $ to indicate the specific variable we want to use. Since we have six predictor variables, we will eventually only keep the significant ones and eliminate all others. For this, we first create a new vector fit1, based on the linear model established above. We then use the summary() function to get the linear model's residualns, coefficients and their appropiateness as predictors. 
+```{r}
+fit1 <- lm(wx$dewp ~ wx$temp + wx$visib + wx$wdsp + wx$max + wx$min + wx$prcp, data=wx)
+summary(fit1)
+```
+
+Since the sampling distributions of the coefficients are t-distributions, the summary() command automatically performs t-tests for each coefficient. From this, we can see that most of the predictor variables are significant, as the number of * suggests (five of the six have three *). However, since ws$MAX only has one asterisk, it means it is not as significant and thus we can eliminate it from our model. We then create another linear model, linking it to the vector fit2, without MAX and make sure that our remaining variables are still significant. Since all of the have three asterisks, it means thet are.  Likewise, R-squared indicates that 94.99% of the variability is explained by the model, which is still very high.
+```{r}
+fit2 <- lm(wx$dewp ~ wx$temp + wx$visib + wx$wdsp + wx$min + wx$prcp, data=wx)
+summary(fit2)
+```
+
+We can see that our linear model is good at predicting dewpoint temperature, and hence our model's equation, replacing the estimates, will be: y = 3.787 + 0.679(temp) - 1.463(visib) - 0.917(wdsp) + 0.406(min) + 3.522(prcp).
+
+Still, we have to models to choose from: fit1 (six predictors) and fit2 (five predictors). To determine which to choose, we can performa an analysis of variance between the models using the anova() function. 
+```{r}
+anova(fit1, fit2)
+```
+
+The test yields values for t computed for each one of the model's coefficients, and  also an F-statistic and a P-Value for that critical value of F. The F-test describes joint explanatory power of the model, i.e. all combined predictors are significant, while the t-tests describe the explanatory power of each predictor. Usually, if some t's are significant, then F will also be significant since if some of the predictors are explanatory as predictors, then the entire model should be as well. For the F-test, the null hypothesis is that all of the coefficients of the linear model are zero, i.e. non of them are significant. Hence, the alternative is that one or more of the coefficients are not zero and thus significant. Given our results, we reject the null for the F-test because since not all coefficients are zero, it means that our model has predictive value. F is calculate by dividing Model SS/Model df by Residual SS/Residual df, where SS means sum of squares and df is degrees of freedom. 
+
+We now do an analysis of variance for fit1 using anova().
+```{r}
+anova(fit1)
+```
+
+R-squared in this case is the coefficient of multiple determination, expressing hpw much of the variability in the dependent variable is explained by the predictors. R-squared adjusted is smaller than multiple R-squared (biased) because it compensates for the estimate variability based on how many variables and how many observations are involved, allowing you to compare the explanatory power of different models with a different number of predictors. One should always be wary of overfitting, which is when our model has too many predictors. 
+
+## C-2 Exercise 1
+
+To test whether a particular predictor is significant we need to make sure that its slope (coefficient) is not zero. The following graph demonstrates why if a predictor's slope is zero we should not keep it in our model. If the slope is zero, it means that no matter by how much our x (predictor) variable changes, y (the dependent variable) will not change at all. 
+```{r}
+library(ggplot2)
+df <- data.frame() 
+ggplot(df) + geom_point() + xlim(0,2) + ylim(0,2) + geom_hline(yintercept=1) + xlab("x (independent variable)") + ylab("y (response variable)") + annotate("text", x=0.75, 1.3, label="Slope", cex=7) + annotate("text", x=1, 1.29, label=expression(beta*" = 0"), cex=7, parse=TRUE) + annotate("text", x=0.83, y=1.1, label="for any change in x, there will be no change in y!")
+```
+
+To do hypothesis tests on each of the coefficients in a linear model, as well as for the y-intercept of the model, we must first make check our assumtpions: the observations must be independent (values of measurements do not influence each other), error terms associated with each observation are independent (do residuals influence each other), the relationship between the variables is linear, the values of y vary normally around the mean of y, and the variance of y-values for any x-value should be about the
+same as the variance of y-values for any other x-values (homoscedasticity). One can use the gvlma function in the gvlma package to check the assumptions with R.
+
+Once again, we start by loading the Shenandoah Regional Airport (SHD) weather data for 2013. There are 365 observations, one for each day in the year; we use the janitor package and read_delim() as before. 
+```{r}
+wx <- read_delim("https://raw.githubusercontent.com/NicoleRadziwill/Data-for-R-Examples/master/kshd-2013.txt", delim="\t") %>% janitor::clean_names()
+wx
+```
+
+Since the data in yearmoda is expressed as an interger, we can use the lubridate package to change its format to year-month-day (ymd).
+```{r}
+library(lubridate)
+wx$yearmoda <- ymd(wx$yearmoda)
+```
+
+In this case, we will create only a model from the summer data. To take a subset of the data frame for weather, wx, which only includes data from May 31 to August 31, we employ the filter() function and specify the range of dates. 
+```{r}
+library(dplyr)
+wx %>% filter(between(yearmoda, as.Date("2013-05-31"), as.Date("2013-08-31"))) -> summer.wx
+summer.wx
+```
+
+We then create two linear models: the first will be simple linear regression with one predictor and one predicted variable. In this case, we are predicting the maximum daily temperature from daily average visibility. In this case, when visibility is low, the max temperatures should also be low. The t value is 1.652 and the p-value is 0.102 for summer.wx$visib.
+```{r}
+simple.fit <- lm(summer.wx$max ~ summer.wx$visib)
+summary(simple.fit)
+```
+
+The second model uses a multiple regression, with 8 predictors to one response variable, predicting maximum temperature from all of the other possible predictors. Here, we are referring to the variable name (MAX) and
+telling lm that we want to use the data contained in summer.wx with data=, instead of of referring to the variable with reference to the data frame where it lives (summer.wx$MAX). Also, lm produces a linear model to predict MAX using everything else that's available, which is what the dot after the tilde means. 
+```{r}
+multiple.fit <- lm(max ~ ., data=summer.wx)
+summary(multiple.fit)
+```
+
+Our null hypothesis is that Beta will be zero, while out alternative hypothesis is the two-tailed version, i.e. Beta is different to zero.
+
+Our level of significance, i.e. our alfa, is 0.05. 
+
+To calculate the test statistic we ise the following formula: t=Beta hat (slope we estimate from our data) divided by the division between standard error (Se) and saquare root of sum of squares of x. 
+
+For our first simple linear model, we can test the significance of the slope associated with the VISIB predictor and compute its test statistic the following way:
+```{r}
+iv <- summer.wx$visib 
+est.beta <- simple.fit$coefficients[2]
+ss.xx <- sum( ((iv-mean(iv))^2 ))
+se <- sqrt((sum((simple.fit$residuals^2)) / (length(iv)-2)))
+( t <- est.beta / (se / sqrt(ss.xx)) )
+```
+
+The value of t is 1.652239, which is exactly what we saw in the output from summary(simple.fit). 
+
+For the second case, testing the significance of the slope associated with the WDSP predictor in the multiple regression model, using the following simplified expression: t=Beta hat divided by Standard Error of Beta hat. 
+```{r}
+summary(multiple.fit)
+```
+
+From the wdsp line we get that the estimate is -0.51156 and that the Standard Error is 0.31581. We divide the former by the latter and get -1.619835, which is the value of the test statistic as computed by R. 
+```{r}
+-0.51156/0.31581 
+```
+
+We then draw a picture and shade the area left of -1.62 and right of 1.62. We use ggplot to create this graph. 
+```{r}
+ggplot(data.frame(x=c(-5,5)), aes(x=x)) +
+ stat_function(fun=dnorm) +
+ stat_function(fun=dnorm, xlim=c(1.62, 5), geom="area") +
+ stat_function(fun=dnorm, xlim=c(-5, -1.62), geom="area")
+```
+
+We then use the pt() command to get the p-value. With pt alone we can only find areas to the left of a particular t value, but we want to find the area in both tails. Therefore, R must compute the area to the left of t=-1.61, and multiply it by 2 to capture both tails. Firs we do it for the simple regression case, with t=1.65. 
+```{r}
+(1-pt(1.65, df=91))*2
+```
+
+Second we do it for the multiple regression case, where t=-1.62. 
+```{r}
+pt(-1.62, df=91)*2
+```
+
+The resulting p-values are: for visib in the simple model is 0.102, and for wdsp in the multiple regression model is 0.109. Neither of them is less that 0.05, i.e. our alfa, and therefore we fail to reject the null, meaning that neither of the predictors we examined are significant in the context of their own model. Conversely, the results show that variables like yearmoda, min, and temp are significant. 
+
+We then test for the significance of the intercept using t= alfa hat minus alfa0 divided by Standard Error of alfa. Standard error of alfa is Standard error times the square root of the sum of x squared divided by n times the sum of squares of xx. Using the information of our simple.fit model, we can easily calculate the t for the intercept, which is 22.64783.
+```{r}
+iv <- summer.wx$visib 
+est.alpha <- simple.fit$coefficients[1]
+ss.xx <- sum( ((iv-mean(iv))^2 ))
+se <- sqrt((sum((simple.fit$residuals^2)) / (length(iv)-2)))
+sum.xs <- sum(summer.wx$visib^2)
+( t <- est.alpha/ (se* sqrt(sum.xs/(93*ss.xx))) )
+```
+
+With t at hand, we can calculate the p-value of the intercept for both tails as we did before, which gives us a p-value of about zero, which less than our alfa and thus significant. 
+```{r}
+(1-pt(22.648, df=91))*2
+```
+
+Finally, we compute the confidence interval and double check with R. We can see that the intercept has a t statistic of 22.648, which is what we calculated analytically, and a p-value approaching zero, <2e-16, and very significant (***).
+```{r}
+summary(simple.fit)
+```
+
+Bringing the base package and using the plotaddci function, we can then plot the confidence intervals on the scatterplot. 
+```{r}
+library(base)
+source("https://raw.githubusercontent.com/NicoleRadziwill/R-Functions/master/plotaddci.R")
+simple.fit <- lm(summer.wx$max ~ summer.wx$visib)
+plot(summer.wx$visib, summer.wx$max, pch=16,
+main="Max Temp vs. Visibility (Summer)")
+plot.add.ci(summer.wx$visib, summer.wx$max,interval="confidence", level=0.95, lwd=3, col="red")
+```
+
