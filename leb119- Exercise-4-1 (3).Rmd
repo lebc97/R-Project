@@ -1,0 +1,147 @@
+---
+title: "Exercise 4"
+author: "Luis Borrero"
+date: "7/24/2019"
+output: html_document
+---
+
+4-1. Downloading the data file Pulse2017 obtained from GitHub. We turn the originally .txt data into an R data frame called my.data using the function read.table(). This sign ~ means to go to the working directory. 
+```{r}
+my.data <- read.table("~/Pulse2017.txt",header=TRUE)
+```
+
+Present the data, particulalrly the first six rows, using head()
+```{r}
+head(my.data)
+```
+
+Examine the data's structure using the str() function. 
+```{r}
+str(my.data)
+```
+We can observe that the data has compiled 91 observations of 8 variables. Those 8 variables are: student, gender, smoker, fitness level, app, bpm, bpm.end and section. We can also see how is the data being described, for instance: F for female (1) and M for male (2). 
+
+4-2.Similar exercise as before but using a .csv file. Our new R data frame is called cc.data. In this case we employ read.csv() while still using head() and str().
+```{r}
+cc.data <- read.csv("~/coffee.csv",header=TRUE)
+cc.data
+head(cc.data)
+str(cc.data)
+```
+
+4-3. This exercise deals with loading data from Google Sheets. As the book mentioned, we need to publish our data and make it a .csv file to faciliate the process. First we make sure that we are using the tidyverse package, employing library(tidyverse). Then we follow the same procedure as before and use read_csv("url") to bring the data and head() to see it in a more organized manner. 
+```{r}
+library(tidyverse)
+my.gsfile<-read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRqRViOjgq72fV3Ugu9yAFnSIhZ-Bh98Kb6uTP8P2KOHURxLc5tsP3U8-QoZaOtgs-qqP7FUfQuPFTA/pub?output=csv")
+head(my.gsfile)
+```
+
+4-4. Another example dealing with downloading data into R, but this time we simply copy and paste the URL, link it a varibale, i.e. "url," and then employ the read() so that R is able to read the data we are trying to obtain. Finally, the head() displays the first 6 rows and allows us to make sure that the data was imported correctly. 
+```{r}
+url <- "https://raw.githubusercontent.com/NicoleRadziwill/Data-for-R-Examples/master/comp-temps.csv"
+temps <- read.csv(url)
+head(temps)
+```
+
+4-5. Example dealing with dowloading data from a URL that has data stored in it. Once again, we use read_csv("url").
+```{r}
+library(tidyverse)
+machine<-read_csv("http://archive.ics.uci.edu/ml/machine-learning-databases/cpu-performance/machine.data")
+machine
+```
+
+4-6. The last example of how to get data into R deals with R's own datasets, in this case the iris dataset, by simply employing the data() and head() functions. 
+```{r}
+data(iris)
+head(iris)
+```
+
+Instead of showing the first part of the data like head(), the tail() fucntion generates the last six values of the dataset. This might be useful to see how many objects there are in the sample (in this 150). Likewise, if the data is organized from low to high, it can be useful in order to easily calculate the range. Furthermore, it helps you observe the extremes of your dataset, identify outliers if they exist, and overall see how much they vary with the initial ones. For instance, in this example the length and width of the petals greatly increase from the setosa species and the virginica species. 
+```{r}
+tail(iris)
+str(iris)
+```
+
+4-7. The first step is to generate the data with the seq() functions, which will provide 500 values (length of the data) of data from -5 to 5 (minimum and maximum). In here, our specifications tell us that the variable is x, its mean is zero and that its standard deviation is 2. The c() function combines the arguments. 
+```{r}
+x<-seq(-5,5, length=500)
+df<-data.frame(x, dnorm(x,0,2), pnorm(x,0,2))
+names(df) <- c("x", "PDF", "CDF")
+```
+
+Then, we generate the plots with the desired specifications. The ggplot() helps us do that, and with functions like aes(), geom_line() and ggtitle() we stipulate that we want x to be the name of the varibale in the x-axis and PDF (and later CDF) to be the name of the variable of the y-axis, and that the first graph's title must be Normal PDF and the second one's titlte must be Normal CDF.
+```{r}
+left <- ggplot(df,aes(x=x, y=PDF)) + geom_line() + ggtitle("Normal PDF")
+right <- ggplot(df,aes(x=x, y=CDF)) + geom_line() + ggtitle("Normal CDF")
+```
+
+We then arrange the plots using cowplot, which is a complimentary package to ggplot that has various features that help create high quality graphics, bringing particular functions of that package to ggplot like the plot_grid function. Thus, the command cowplot::plot_grid(left, right) helps arrange the two plots into the same grid, and :: specifies the plots we want to use with cowplot and how we want them to appear arranged in the grid, i.e. Normal PDF on the left and Normal CDF on the right. 
+```{r}
+library(cowplot)
+cowplot::plot_grid(left, right)
+```
+
+4-8. A standard normal model is a model whose histogram is shaped as a bell curve and is symmetrical, having a mean of zero and a standard deviation of 1, i.e. N(0,1). Hence, 68% of the data falls between +1 and -1 standard deviations of the mean, 95% of the data between +2 and -2 standard deviations of the mean, and 99.7% between +3 and -3 standard deviations of the mean. 
+```{r}
+x <- seq(-4,4,length=500)
+df <- data.frame(x, dnorm(x,mean=0,sd=1))
+names(df) <- c("x","y")
+ggplot(df, aes(x=x,y=y)) + geom_line() +
+    ggtitle("Standard Normal Model: N(0,1)")
+```
+
+Different Normal Model N(50,15)
+```{r}
+x <- seq(0,100,length=6000)
+df <- data.frame(x, dnorm(x,mean=50,sd=15))
+names(df) <- c("x","y")
+ggplot(df, aes(x=x,y=y)) + geom_line() +
+    ggtitle("Normal Model 2: N(50,15)")
+```
+
+Symmetry, the form of a bell curve, unimodality and having the mean, median and mode be the same (or very close to one another) are the characteristics that make a model normal. This means that most data values cluster around the mean and hence the farther they are from the mean the least likely they are to ocurr. 
+
+4-9. First, we extract the data on exam scores from GitHub using the URL and read.csv() method. By inputing the variable all.scores we can see that there are 96 observations, the scores are numbers of type double and the semester is a categorical variable. 
+```{r}
+all.scores <- as.tibble(
+read.csv("https://raw.githubusercontent.com/NicoleRadziwill/Data-for-R-Examples/master/compare-scores.csv",header=TRUE) )
+all.scores
+```
+
+Then we generate the histogram, inputing the appropiate label for the x and y-axis and the title of the graph. As seen, the histogram is largely symmetrical and thus normal, but slightly skewed to the right. 
+```{r}
+left <- ggplot() + geom_bar(aes(x=all.scores$score)) +
+ ggtitle("Histogram of Scores")
+```
+
+Then we generate the normal Q-Q plot, specifying once again axis labels and title. We then use the cowplot function to organize the plots in the same grid. All data points should be nearly along the diagnal line. 
+```{r}
+right <- ggplot() + geom_qq(aes(sample=all.scores$score)) +
+ geom_qq_line(aes(sample=all.scores$score)) +
+ ggtitle("Normal Q-Q Plot")
+cowplot::plot_grid(left,right)
+```
+
+Find the mean using the Tidyverse (Using dplyr) package. 
+```{r}
+all.scores %>% summarise(mean=mean(score))
+```
+
+Find the standard deviation using the Tidyverse (Using dplyr) package. 
+```{r}
+all.scores %>% summarise(sd=sd(score))
+```
+
+The resulting model is N(47.3, 9.31). The following plot shows the percentage of students who got below a 50. 
+```{r}
+x <- seq(20,80,0.05) # Use 0.05 increments so no gap in shading
+df <- data.frame( x=x, y=dnorm((x-47.3)/(9.3)) )
+ggplot(df, aes(x=x,y=y)) + geom_line() + geom_vline(xintercept=50) +
+ geom_area(mapping=aes(ifelse(x<50,x,0)), fill="green", alpha=0.2) +
+ xlim(20,80)
+```
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
