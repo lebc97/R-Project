@@ -1,0 +1,178 @@
+---
+title: "leb119-Exercises 7"
+author: "Luis Borrero"
+date: "7/31/2019"
+output: html_document
+---
+
+7-1. Install both the readr and janitor packages and bring them up with the library() function. Open the data from the URL, using the read_delim() function.
+```{r}
+library(janitor)
+library(readr)
+wx <- read_delim("https://raw.githubusercontent.com/NicoleRadziwill/Data-for-R-Examples/master/kshd-2013.txt", delim="\t") %>% janitor::clean_names()
+```
+
+Generate the scatterplot using ggplot(). We specify that we want the independent variable x = temp on temp on the x-axis and the dependent variable y = dewp on the y-axis. We go on to label the axises and to provide a name for our scatter plot.
+```{r}
+library(tidyverse)
+wx %>% ggplot(aes(x=temp, y=dewp)) + geom_point() + ggtitle("Dewpoint vs. Temperature") + xlab("Temperature (deg F)") + ylab("Dewpoint (deg F)")
+```
+
+
+
+7-2. We generate data that will have a correlation coefficient of nearly +1 and plot it. Here, we define that i are numbers between 1 and 10, and both the independent (xi) and dependent (yi) variables. We create a data.frame() and the use ggplot() to generate our plot. 
+```{r}
+i <- 1:10
+xi <- c(1,2,3,4,5,6,7,8,9,10)
+yi <- c(.8,2.1,2.9,3.8,5.3,6,6.9,8.1,9.3,9.9)
+data.frame(xi,yi) %>% ggplot(aes(x=xi,y=yi)) + geom_point(size=5)
+```
+
+To compute the covariance first need the difference between each x coordinate and the mean of the x's (xi.minus.xbar) as well as the difference between each x coordinate and the mean of the y's (yi.minus.ybar). For each point i, we multiplied these two values together to get xdiff.x.ydiff. 
+```{r}
+xbar <- mean(xi)
+ybar <- mean(yi)
+xi.minus.xbar <- xi - xbar
+yi.minus.ybar <- yi - ybar
+xdiff.x.ydiff <- xi.minus.xbar * yi.minus.ybar
+```
+
+We put this values in a data frame called calc.df to help us compute the covariance and correlation. 
+```{r}
+calc.df <- cbind(i,xi,yi,xi.minus.xbar,yi.minus.ybar,xdiff.x.ydiff)
+calc.df
+```
+
+To find the covariance in R, we must add all the multiplied differences, i.e. xdiff.x.yfiff, and divide them by n-1, in this case 9. 
+```{r}
+sum(xdiff.x.ydiff)/9
+```
+
+This is another way of computing the covariance in R, using the cov() function. 
+```{r}
+cov(xi,yi)
+```
+
+To compute the coefficient of correlation we first divide the covariance by x and y's standard deviations. The second line provides an easier way to compute this coefficient by simply inputing the cor() function. 
+```{r}
+cov(xi,yi)/(sd(xi)*sd(yi))
+cor(xi,yi)
+```
+
+
+
+7-3. We continue using the data frame of daily weather observations, where each column contains one variable, and there are 365 rows. They are arranged in day order, with January 1st on the 1st row, and December 31st on the last.
+```{r}
+wx
+```
+
+Install the lubridate package and bring it forward using library(). This package to easily and quickly label the seasons. We use the ymd() to change interger dates to actual dates. 
+```{r}
+library(lubridate)
+wx$yearmoda <- ymd(wx$yearmoda)
+wx
+```
+
+We then set time intervals to define each season. We use the interval() and ymd() function. For instance, winter will be the inteval between 2013-01-01 and 2013-03-20, while spring will be the interval between  2013-03-21 and 2013-06-20. 
+```{r}
+winter <- interval(ymd("2013-01-01"), ymd("2013-03-20"))
+spring <- interval(ymd("2013-03-21"), ymd("2013-06-20"))
+summer <- interval(ymd("2013-06-21"), ymd("2013-09-20"))
+autumn <- interval(ymd("2013-09-21"), ymd("2013-12-20"))
+wintr2 <- interval(ymd("2013-12-21"), ymd("2013-12-31"))
+```
+
+After defining each season, we use mutate() to create a new data frame called wx2 that contains a new variable called season. 
+```{r}
+wx2 <- wx %>% mutate(season = case_when(wx$yearmoda %within% winter ~"winter",wx$yearmoda %within% spring ~"spring", wx$yearmoda %within% summer ~"summer", wx$yearmoda %within% autumn ~"autumn", wx$yearmoda %within% wintr2 ~"winter"))
+```
+
+This is the resulting new table/data frame with the new variable. 
+```{r}
+wx2
+```
+
+We then generate the scatterplots to show the relationship between these quantitaive variables, in this case Average Daily Temperature and Dewpoint, and visualize the relationships between those variables across multiple groups, like across all of the seasons in our weather dataset. Here we create the same scatterplot as before, but we’ll make each point on the plot a different shape and color based on the season it was observed.
+```{r}
+left <- wx2 %>% ggplot(aes(x=temp, y=dewp, color=season)) + geom_point(size=3)
+right <- wx2 %>% ggplot(aes(x=temp, y=dewp, shape=season)) + geom_point(size=3)
+cowplot::plot_grid(left,right)
+```
+
+We can use the scale_shape_manual() function to choose which plot characters you want.
+```{r}
+wx2 %>% ggplot(aes(x=temp, y=dewp, shape=season)) + geom_point(size=3) + scale_shape_manual(values=c(0,7,15,20))
+```
+
+We can install the GGally package and use the ggpairs() function to generate a scatterplot matrix and find out whether there are relationships between the variables that we should examine further. 
+```{r}
+library(GGally)
+ggpairs(wx[,2:10]) 
+```
+
+Some interesting observations are: there is a linear relationship between average daily temperature and dewpoint, average daily temperature and max/min temperatures, and dewpoint and max/min temperatures. Likewise, given the observed relationship between visibility and speed, we con infer that as wind speed gets higher, the visibilities tend to increase. Moreover, temperatures are higher during the summer and they are lower during the winter. 
+
+
+
+7-4. To construct contingency tables, first we load the M&M data representing 1922 individual M&M candies; makes sure the data as loaded correctly. 
+```{r}
+library(readr)
+library(tidyverse)
+mnms<- read.csv("http://qualityandinnovation.com/spring-summer-2017-mnms")
+head(mnms)
+```
+
+We can build a contingecy table using the table() command. The first argument says that from the mnms data frame R should choose color, which will appear in the rowsm and the second one specifies it should choose defect, which will span the columns. 
+```{r}
+table(mnms$color, mnms$defect)
+```
+
+To create an even more sophisticated contingency table, we first need to install the gmodels package and bring it on so that we can use the CrossTable() function. In contrast to the simple display produced by table, this one contains the row totals in the rightmost margin, and the column totals on the bottom margin.
+```{r}
+library(gmodels)
+CrossTable(mnms$color, mnms$defect, prop.t=FALSE, prop.r=FALSE, prop.c=FALSE, prop.chisq=FALSE, chisq=FALSE)
+```
+
+We store the output of CrossTable in m and get frequencies (with m$t), row proportions (with m$prop.row), column proportions (with m$prop.col), and table proportions (with m$prop.tbl). Each row adds up to 100% with m$prop.row, and each column adds up to 100% with m$prop.col
+```{r}
+m <- CrossTable(mnms$color, mnms$defect, prop.t=FALSE, prop.r=FALSE, prop.c=FALSE, prop.chisq=FALSE, chisq=FALSE)
+m$prop.row
+```
+
+Round in place to two decimals for data to be more easily read. 
+```{r}
+round(m$prop.col,2)
+```
+
+Similar example as the one in m <-, but changing the prop.t=, prop.r=, prop.c=, and prop.chisq= arguments to TRUE. 
+```{r}
+CrossTable(mnms$color, mnms$defect, prop.t=TRUE, prop.r=TRUE, prop.c=TRUE, prop.chisq=TRUE, chisq=FALSE)
+```
+
+Same as before, but with changing chisq= argument to TRUE.
+```{r}
+CrossTable(mnms$color, mnms$defect, prop.t=TRUE, prop.r=TRUE, prop.c=TRUE, prop.chisq=TRUE, chisq=TRUE)
+```
+
+The new information the graph yields tells us that the p-value is 0.0142785, meaning that it is so low , we can reject the null hypothesis of the Chi-square test of independence, meaning that the two categorical
+variables are independent of one another. There appears to be a relationship between the color of the M&M, and whether or not it has defects, based on this data set.
+
+Contingency tables show us marginal distributions because they include the totals displayed on the edges of the table, i.e. the row totals on the rightmost margin, and the column totals on the bottom margin. In this case, there is a marginal distribution of colors and another one of defects. We then can produce barplots, with ggplot(), with the respective frequencies or relative frequencies of the colors (defects we observed) independent of the defects (colors).  
+```{r}
+left <- data.frame(table(mnms$color)) %>% ggplot(aes(x=Var1,y=Freq)) + geom_bar(stat="identity") + ggtitle("Marginal Distribution of Colors") + xlab("Colors") + ylab("Counts")
+right <- data.frame(table(mnms$defect)) %>% ggplot(aes(x=Var1,y=Freq)) + geom_bar(stat="identity") + ggtitle("Marginal Distribution of Defects") + xlab("Defects") + ylab("Counts")
+cowplot::plot_grid(left,right)
+```
+
+The contingency table also shows us conditional distributions, contingency table, i.e.how frequently one of the categorical variables is observed given that you specifically set the other categorical variable to equal a specific value. We then can plot these distribution, but first we must filter() out the information that is contained in the contingency table. For the leftmost plot, it will look like this:
+```{r}
+ mnms %>% filter(color=="G") %>% group_by(defect) %>% tally()
+```
+
+The filtering can also be embedded in the fucntional sequence that generates plots. The resulting plots show on the left, the Conditional Distribution of Defects for All Green M&Ms, and on the right, the Distribution of Colors for All Chipped or Cracked M&Ms. 
+```{r}
+left <- mnms %>% filter(color=="G") %>% group_by(defect) %>% tally() %>% ggplot(aes(x=defect,y=n)) + geom_bar(stat="identity") + ggtitle("Conditional Distribution of Defects (Green)") + xlab("Defects") + ylab("Counts")
+right <- mnms %>% filter(defect=="C") %>% group_by(color) %>% tally() %>% ggplot(aes(x=color,y=n)) + geom_bar(stat="identity") + ggtitle("Conditional Distribution of Colors\n(Chipped/Cracked)") + xlab("Colors") + ylab("Counts")
+cowplot::plot_grid(left,right) 
+```
+
