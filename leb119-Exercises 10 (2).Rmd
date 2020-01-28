@@ -1,0 +1,276 @@
+---
+title: "leb119-Exercises 10"
+author: "Luis E Borrero"
+date: "8/7/2019"
+output: html_document
+---
+
+Exercise 10-1.First, we bring up the data from GitHub, bringing the readr package and using the read_csv function to download it properly. 
+```{r}
+library(readr)
+comp.temps <- read_csv("https://raw.githubusercontent.com/NicoleRadziwill/Data-for-R-Examples/master/comp-temps.csv", col_types=cols(date=col_date("%Y%m%d")))
+comp.temps
+```
+
+We then make sure that our data meets all of our assumptions, i.e. each observation in our data must be linked togteher via a common unit of analysis, that our sample is random, that our observations are independent, that the sample is small enough (less than 10% of the entire population size), and that our data is nearly normal. 
+
+To ensure a random sample, we randomly select 30 values from the data frame of temperatures during summer 2014. We use the sample() command, specifycing we want 30 observations from comp.temps.
+```{r}
+library(dplyr)
+r.s <- sample_n(comp.temps, 30)
+```
+
+To check that our data is nearly normal, we proceed to make a a Histogram and QQ-plot and analyze their forms. We employ gglot and input the different specifications.
+```{r}
+library(ggplot2)
+left <- ggplot() + geom_bar(aes(x=r.s$diff)) + ggtitle("Histogram of scores")
+right <- ggplot() + geom_qq(aes(sample=r.s$diff)) + geom_qq_line(aes(sample=r.s$diff)) + ggtitle("Normal Q-Q Plot")
+cowplot::plot_grid(left,right)
+```
+
+We can see from the histogram that the data is unimodal, and symmetric, while most points align quite well with the QQ-plot line. Hence, we can assume that the data is nearly normal. 
+
+We then define our null and alternative hypotheses, which are:
+H0 : d=0 (the difference between temps at CHO and SHD is zero)
+Ha : d>0 (the CHO temps are higher than the SHD temps)
+
+We choose a level of significance of alfa=0.05 
+
+We then calcuate the Test Statistic, subtracting the value that's on the right-hand side of the null and alternative hypotheses (d0) from the mean difference you've calculated from your sample. We automatically compute the summary statistics (mean and standard deviation) using summarize().
+```{r}
+ r.s %>% summarize(mean=mean(diff), sd=sd(diff))
+```
+
+We then calculate the t-statistic inputing the necessary values into the formula
+```{r}
+numr <- 2.001436/sqrt(30)
+1.166667/numr
+```
+
+Our t-statistic is: 3.192757. 
+
+We then draw our t-distribution, which should be bell-shaped. We must specify that we want the area to the Right of t=3.19 (greater than) to be shaded as well. 
+```{r}
+ggplot(data.frame(x=c(-5,5)), aes(x=x)) + stat_function(fun=dt, args=list(df=29)) + stat_function(fun=dt, args=list(df=29), xlim=c(4.758,5), geom="area")
+```
+
+The resulting graph, however, does not show any shaded area because we're talking about t-statistic that is really far to the right on that bell curve, i.e off the screen. The area under the curve to the right of about 3.192757 sd's above the mean, means that it is so far the tail that we cannot even see the shaded region. Hence, the p-Value is very close to zero, i.e. p < 0.001. 
+
+To mechanically find the p-value we substract the pt() function from 1, specifying the t-statistic and the degrees of freedom (30-1).
+```{r}
+1-pt(3.192757,df=29)
+```
+
+With a p-value of 0.001690193, we can conclude that the P-value is basically zero. 
+
+We then answer the question: is the p-values less than alfa? Our results show that 0.001690193<0.05, meaning that, indeed, our p-value is less than alfa, so we should reject our null hypothesis that there is no difference in average daily high temperature in summer between Charlottesville and Harrisonburg. In other words, there is some difference between temperatures. 
+
+We can then compute our confidence interval: estimate plus/minus margin of error. 
+
+Analytically, it would be:
+```{r}
+dd <- 2.001436/sqrt(30)
+ddd <- 2.045*dd
+1.166667+ddd
+1.166667-ddd
+```
+
+Our confidence interval is: (0.4194024, 1.913932)
+Given that zero is not included, we are 95% confident the difference between temperatures is not zero, once again affirming why we reject the null. 
+
+In R, we use the t.test() command to compute this interval:
+```{r}
+t.test(r.s$cho, r.s$shd, paired=TRUE, alternative="greater")
+```
+
+The t-statistic is close to what we computed analytically as is the p-value. However, if we want to get the confidence interval, we need to elmiminate the alternative hypothesis argument from our function:
+```{r}
+t.test(r.s$cho, r.s$shd, paired=TRUE)
+```
+
+The interval found using R is similar to the one found analytically. 
+
+
+
+Exercise 10-2. We first check all assumptions: random sample, independent observations, small enough sample, and sample is big enough to observe a proportion that's not too close to 0% or 100%
+
+For this exercise, our hypotheses are:
+H0: p = 0.9 (90% of the homeowners would invest)
+Ha: p < 0.9 (less than 90% of the homeowners would invest)
+
+Our alfa is 0.05. 
+
+po = 0.90
+qo = 0.10
+
+With this in mind, analytically, we would input the necessary values into the formula to calculate our z-statistics. 
+```{r}
+z.val <- 312/360
+num <- z.val-0.9
+poqo <- 0.9*0.1
+denom <- sqrt(poqo/360)
+z <- num/denom
+z
+```
+
+Our z value is -2.108185. 
+
+We then draw a picture. Since we are approximating to the binomial for this test, we draw the picture using fun=dnorm. Also, since our alternative hypothesis specificies "less than," we need to shade the area to the left of our compted test statistic z of -2.108185. We use ggplot:
+```{r}
+ggplot(data.frame(x=c(-4,4)), aes(x=x)) + stat_function(fun=dnorm) + stat_function(fun=dnorm, xlim=c(-4,-2.09), geom="area")
+```
+
+Clearly, there is just a small area shaded to the left of z=-2.108185, so according to the 68-95-99.7 rule, we can estimate that a little less than 2.5% of the total area is going to be in the left tail beyond -2.108185 standard deviations from the mean. 
+
+We can find the p-value useing the pnorm() command.
+```{r}
+pnorm(-2.108185)
+```
+
+So our p-value is approximately 1.8% of the area under the curve in the left tail. As before, our p-value of 0.0175075 is less than our alfa of 0.05. We once again reject the null hypothesis that the proportion of homeowners that would invest in energy efficient solutions is 90%, favoring the alternative that less than 90% agree.
+
+We then calculate the confidence interval, with the same formula as before: estimate plus/minus margin of error. 
+```{r}
+pq <- 0.9*0.1
+mmm <- pq/360
+pm <- 1.96*sqrt(mmm)
+0.867+pm
+0.867-pm
+```
+
+Our confidence interval is: (0.836, 0.897). This means that ee are 95% confident that the true proportion of homeowners in our city who would make a significant investment in energy efficiency to permanently reduce their utility bills is between 83.6% and 89.8%.
+
+Now, we will proceed with the an example using R.
+
+First we need to source the ztest function using source(). 
+```{r}
+source("https://raw.githubusercontent.com/NicoleRadziwill/R-Functions/master/ztest.R")
+```
+
+With just our sample, we can calculate the confidence interval using the z.test command. The results do not match waht we calculated before, but show a wider interval. 
+```{r}
+z.test(312,360)
+```
+
+Hence, we need to specify our true population proportion of 90%. Here the results are more compatible with our previous calculations. 
+```{r}
+z.test(312,360,p=0.9)
+```
+
+To access the confidence interval directly we use the z.test() function and specify we only want the cint (C.I.) wiht $.
+```{r}
+z.test(312,360,p=0.9)$cint
+```
+
+The Yates continuity correction assumes that we are using a normal (continuous) distribution to approximate a binomial (discrete) distribution. Using prop.test() we can calculate the desired values, with or without this correction. With the correction, and for a wider interval, we simply input the data as before:
+```{r}
+prop.test(312,360)
+```
+
+Without the correction, we add correct=FALSE argument:
+```{r}
+prop.test(312,360,correct=FALSE)
+```
+
+We must remember that prop.test () displays the Chi-square test on a contingency table with only one categorical variable, not the z-statistic. 
+
+To perform the same test we did earlier, we must add an argument accounting for the true population proportion of 90% and that we want to test the alternative hypothesis, i.e. less than (left). 
+```{r}
+prop.test(312,360,p=0.9,alt="less",correct=FALSE)
+```
+
+Here, our p-value is nearly identical to the one we had before. 
+
+If we do not meet all the assumption, we can use an Exact Binomial Test, wich actually uses a binomial distribution (rather than a normal one as before). For this, we employ the binom.test() command, with the specification of before:
+```{r}
+binom.test(312,360,p=0.9)
+```
+
+If we divide the resulting p-value by 2, we get 0.0213, which is close to what we computed analytically. 
+
+
+
+Exercise 10-3. We first check all assumptions: random sample, independent observations, small enough sample, that the sample is big enough to observe a proportion that's not too close to 0% or 100%, and independent groups, i.e. that the 2 samples were independently collected. 
+
+Our hypotheses are:
+H0: pBUSINESS - pTECHNOLOGY = 0 (no difference between proportions)
+Ha: pBUSINESS - pTECHNOLOGY > 0 (a greater proportion of business students are heavy drinkers)
+
+Our alfa is 0.05. 
+
+We then, analytically, compute z, inputing the information we have.
+```{r}
+p <- 117/376
+num <- 0.345-0.270
+hh <- 1/206 + 1/170
+denom <- sqrt(p*0.69*(hh))
+num/denom
+```
+
+The resulting z is: 1.56.
+
+We then draw a picture using the normal approximation to the binomial for this test, using the fun=dnorm function for normal curves. The alternative mentions that the area we are looking for is greater than, so the area to the right of z=1.56 should be shaded. 
+```{r}
+ggplot(data.frame(x=c(-4,4)), aes(x=x)) + stat_function(fun=dnorm) + stat_function(fun=dnorm, xlim=c(1.56,4), geom="area")
+```
+
+We then use the pnomr() to calculate the p-value:
+```{r}
+1-pnorm(1.56)
+```
+
+This means that theP-Value is approximately 5.9% of the total area in the right tail. 
+
+We then ask: is the p-value we just calculated (0.0059) less than our alfa of 0.05? Since 0.059 is greater than 0.05, we fail to reject the null hypothesis that the difference between the proportion of heavy drinkers in the college of business and the proportion of heavy drinkers in the college of technology is the same. 
+
+Now, we compute the confidence interval:
+```{r}
+ww <- 0.345-0.270
+pm <- 1.96*sqrt((0.345)*(0.655)/206 + (0.270)*(0.730)/170)
+ww+pm
+ww-pm
+```
+
+The resulting intrval is (-0.01810264, 0.1681026), meaning that we are 95% confident that the true difference in the proportion of business students who are heavy drinkers and the proportion of technology students who are heavy drinkers is between -1.8% and 16.8%.
+
+Since there is zero percent difference contained inside this interval, there's a possibility that there's no difference at all between the proportion of heavy drinkers in the two groups. Hence, our decision not to reject the null hypothesis is supported.
+
+To conduct the two proportion z-test with R, we need to source the z2.test() function with source:
+```{r}
+source("https://raw.githubusercontent.com/NicoleRadziwill/R-Functions/master/z2test.R")
+```
+
+We then use the z2.test() to get the desired values, which are very similar to what we computed analytically:
+```{r}
+z2.test(x1=71,x2=46,n1=206,n2=170,alternative="greater")
+```
+
+To access the interval directly, we follow the same process and specify with $ what we want to see.
+```{r}
+z2.test(x1=71,x2=46,n1=206,n2=170)$cint
+```
+
+We use the prop.test() to help us execute the z-test in are. First, we need the number of successes and number of observations in both groups. In group one these are 71 and 206 respectively, and in group two it is 46 and 170 respectively. 
+```{r}
+prop.test(x=c(71,46),n=c(206,170),alternative="greater")
+```
+
+To do the same computation without the Yates correction, we add the correct=FALSE argument. 
+```{r}
+prop.test(x=c(71,46),n=c(206,170),alternative="greater", correct=FALSE)
+```
+
+In both cases, the null hypothesis is still rejected, with a very tiny p-value, even though the value of the x2 test statistic differs by a small amount.
+
+We compute the confidence interval by removing the alternative hypothesis argument from our function:
+```{r}
+prop.test(x=c(71,46),n=c(206,170))
+```
+ 
+The calculated values are close to the ones we got analytically, but more accurate. 
+ 
+We must keep in mind that prop.test does not conduct a 2-proportion-z-test and thus the test-statistic differs from what we calculated before. The test it calculate is the chi-square test of independence on a contingency table with two categorical variables. In the resulting contingency table, we should add up the observations in the margins. Then, we find the expected values by multiplying the total of the rows times the total of the columns and dividing that product by the total (376). Using that information, we compute a Chi-square test statistic, and use it to look up the p-value for the two-tailed alternative, which is an area of 0.1226. 
+```{r}
+prop.test(x=c(71,46),n=c(206,170),correct=FALSE)
+```
+ 
